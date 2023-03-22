@@ -24,9 +24,6 @@ def sample_seqs(seqs: List[str], labels: List[bool]) -> Tuple[List[str], List[bo
     sampled_seqs = []
     sampled_labels = []
 
-    seqs = np.array(seqs)
-    labels = np.array(labels)
-
     #get positive and negative sequences
     pos_seqs = seqs[labels == True]
     neg_seqs = seqs[labels == False]
@@ -37,18 +34,18 @@ def sample_seqs(seqs: List[str], labels: List[bool]) -> Tuple[List[str], List[bo
         sampled_labels = list(labels)
     #if pos < neg, sample positive more with replacement with length of negative seqs
     elif len(pos_seqs) < len(neg_seqs):
-        over_pos = pos_seqs[np.random.choice(pos_seqs, len(neg_seqs), replace = True)]
+        over_pos = pos_seqs[np.random.choice(len(pos_seqs), len(neg_seqs), replace = True)]
         #new list of sequences and labels that correspond to oversampled dataset
         sampled_seqs = list(np.concatenate(neg_seqs, over_pos), axis=None)
         sampled_labels = list([True] * len(over_pos) + [False] * len(neg_seqs))
     #if neg < pos, sample negative more
     else:
         len(pos_seqs) > len(neg_seqs)
-        over_neg = neg_seqs[np.random.choice(neg_seqs, len(pos_seqs), replace = True)]
+        over_neg = neg_seqs[np.random.choice(len(neg_seqs), len(pos_seqs), replace = True)]
         sampled_seqs = list(np.concatenate(pos_seqs, over_neg), axis=None)
         sampled_labels = list([True] * len(pos_seqs) + [False] * len(over_neg))
 
-    return sample_seqs, sampled_labels
+    return sampled_seqs, sampled_labels
 
 
 def one_hot_encode_seqs(seq_arr: List[str]) -> ArrayLike:
@@ -86,6 +83,8 @@ def one_hot_encode_seqs(seq_arr: List[str]) -> ArrayLike:
         for base in seq:
             #add the one hot encoded base to list
             base_one_hot.append(encoding[base])
-        #add flattened seq encoding to list of encodings    
-        one_hot_encodings.append(np.array(base_one_hot).flatten())
+        #add flattened seq encoding to list of encodings
+        base_one_hot = np.array(base_one_hot)
+        base_one_hot = base_one_hot.flatten()
+        one_hot_encodings.append(base_one_hot)
     return np.array(one_hot_encodings)
