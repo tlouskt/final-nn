@@ -136,11 +136,11 @@ class NeuralNetwork:
         """
         #Initialize empty cache dict, previous activaiton matrix, and add it to cache
         cache = {}
+        cache['A0'] = X
         A_prev = X
-        cache['A0'] = A_prev
 
         #Iterate through network and pull out weights and bias from each layer
-        for idx, layer in self.enumerate(self.arch):
+        for idx, layer in enumerate(self.arch):
             layer_idx = idx + 1
 
             #Get current weights, bias, and activation
@@ -209,7 +209,7 @@ class NeuralNetwork:
 
         #Calculate partial derivatives
         dA_prev = np.dot(dZ_curr, W_curr)
-        dW_curr = np.dot(dZ_curr.T, A_prev )
+        dW_curr = np.dot(dZ_curr.T, A_prev)
         db_curr = np.sum(dZ_curr, axis=0).reshape(b_curr.shape)
 
         return dA_prev, dW_curr, db_curr
@@ -259,8 +259,8 @@ class NeuralNetwork:
             dA_prev, dW_curr, db_curr = self._single_backprop(W_curr, b_curr, Z_curr, A_prev, dA_curr, activation)
 
             #store gradient values
-            grad_dict["dW_curr" + str(layer_idx)] = dW_curr
-            grad_dict["db_curr" + str(layer_idx)] = db_curr
+            grad_dict["dW" + str(layer_idx)] = dW_curr
+            grad_dict["db" + str(layer_idx)] = db_curr
 
             #update activation matrix
             dA_curr = dA_prev
@@ -280,9 +280,9 @@ class NeuralNetwork:
         for idx, layer in enumerate(self.arch):
             layer_idx = idx + 1
             #curr W val - (lr *  gradW)
-            self._param_dict["W" + str(layer_idx)] = self._param_dict["W" + str(layer_idx)] - (self._lr * grad_dict["W" + str(layer_idx)])
+            self._param_dict["W" + str(layer_idx)] = self._param_dict["W" + str(layer_idx)] - (self._lr * grad_dict["dW" + str(layer_idx)])
             #curr b val - (lr *  gradb)
-            self._param_dict["b" + str(layer_idx)] = self._param_dict["b" + str(layer_idx)] - (self._lr * grad_dict["b" + str(layer_idx)])
+            self._param_dict["b" + str(layer_idx)] = self._param_dict["b" + str(layer_idx)] - (self._lr * grad_dict["db" + str(layer_idx)])
         
         return None
 
@@ -325,21 +325,21 @@ class NeuralNetwork:
             X_train_shuffle = X_train[shuffle]
             y_train_shuffle = y_train[shuffle]
             #split training into batches
-            X_batch = np.array.split(X_train_shuffle, num_batches)
-            y_batch = np.array.split(y_train_shuffle, num_batches)
+            X_batch = np.array_split(X_train_shuffle, num_batches)
+            y_batch = np.array_split(y_train_shuffle, num_batches)
 
             #init list to keep track of batch train loss per epoch
             batch_train_loss = []
             #iterate through batches and do forward and backward passes
             for X_train_batch, y_train_batch in zip(X_batch, y_batch):
                 #forward pass
-                y_hat_train, cache_train = self.forward(X_batch)
+                y_hat_train, cache_train = self.forward(X_train_batch)
                 #calculate losses and add to loss list
                 if self._loss_func == "bce":
-                    batch_train_loss.append(self._binary_cross_entropy(y_train_batch, y_train_batch))
+                    batch_train_loss.append(self._binary_cross_entropy(y_train_batch, y_hat_train))
                 else:
                     self._loss_func == "mse"
-                    batch_train_loss.append(self._mean_squared_error(y_train_batch, y_train_batch))
+                    batch_train_loss.append(self._mean_squared_error(y_train_batch, y_hat_train))
                 #backpropagation and update params
                 grad_dict = self.backprop(y_train_batch, y_hat_train, cache_train)
                 self._update_params(grad_dict)
@@ -424,7 +424,7 @@ class NeuralNetwork:
             nl_transform: ArrayLike
                 Activation function output.
         """
-        nl_transform = np.max(0, Z)
+        nl_transform = np.maximum(0,Z)
 
         return nl_transform
 
@@ -442,13 +442,9 @@ class NeuralNetwork:
             dZ: ArrayLike
                 Partial derivative of current layer Z matrix.
         """
-        # if Z > 0:
-            #dZ = 1.0 * Z.astype(int)
-        #else:
-            #dZ = 0.0
-        dZ = (Z > 0).astype(int)
+        dZ = np.multiply(dA, np.where(Z > 0, 1, 0))
 
-        return dA * dZ
+        return dZ
         
 
     def _binary_cross_entropy(self, y: ArrayLike, y_hat: ArrayLike) -> float:
@@ -495,8 +491,6 @@ class NeuralNetwork:
         dA = ((1-y)/(1-y_hat)) - (y/y_hat)
         
         return dA
-
-
 
     def _mean_squared_error(self, y: ArrayLike, y_hat: ArrayLike) -> float:
         """
